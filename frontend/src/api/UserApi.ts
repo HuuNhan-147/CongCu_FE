@@ -1,22 +1,182 @@
 import api from "../config/axios";
+import type {
+  AuthResponse,
+  BasicApiResponse,
+  RegisterResponse,
+  User,
+  UserUpdatePayload,
+} from "../types/User";
 
-// Đăng nhập
-export const loginUser = async (email: string, password: string) => {
+type ApiRecord = Record<string, unknown>;
+
+const asRecord = (value: unknown): ApiRecord => {
+  if (value && typeof value === "object") {
+    return value as ApiRecord;
+  }
+
+  return {};
+};
+
+const toStringValue = (value: unknown, fallback = "") => {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return String(value);
+  }
+
+  return fallback;
+};
+
+const toOptionalDate = (value: unknown) => {
+  if (typeof value === "string" || value instanceof Date) {
+    return value;
+  }
+
+  return undefined;
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  const payload = asRecord(error);
+  const response = asRecord(payload.response);
+  const data = asRecord(response.data);
+
+  return toStringValue(data.message, fallback);
+};
+
+const normalizeUser = (value: unknown): User => {
+  const payload = asRecord(value);
+  const userId = toStringValue(payload.id || payload._id);
+
+  return {
+    id: userId,
+    _id: toStringValue(payload._id, userId),
+    name: toStringValue(payload.name),
+    email: toStringValue(payload.email),
+    phone: toStringValue(payload.phone),
+    isAdmin: Boolean(payload.isAdmin),
+    resetPasswordToken: toStringValue(payload.resetPasswordToken, "") || null,
+    resetPasswordExpires: toOptionalDate(payload.resetPasswordExpires) || null,
+    createdAt: toOptionalDate(payload.createdAt),
+    updatedAt: toOptionalDate(payload.updatedAt),
+  };
+};
+
+const resolveToken = (value: unknown) => {
+  const payload = asRecord(value);
+
+  return (
+    toStringValue(payload.token) ||
+    toStringValue(payload.accessToken) ||
+    toStringValue(payload.access_token)
+  );
+};
+
+const normalizeMessage = (
+  value: unknown,
+  fallback: string
+): BasicApiResponse => {
+  const payload = asRecord(value);
+
+  return {
+    message: toStringValue(payload.message, fallback),
+    success:
+      typeof payload.success === "boolean" ? payload.success : undefined,
+  };
+};
+
+const normalizeAuthResponse = (
+  value: unknown,
+  fallbackMessage: string,
+  requireAuthData = false
+): AuthResponse => {
+  const payload = asRecord(value);
+  const nestedData = asRecord(payload.data);
+  const userSource = payload.user || nestedData.user || payload.newUser;
+  const token = resolveToken(payload) || resolveToken(nestedData);
+  const user = normalizeUser(userSource);
+
+  if (requireAuthData && (!token || !user.id)) {
+    throw new Error("Phản hồi đăng nhập không hợp lệ.");
+  }
+
+  return {
+    user,
+    token,
+    accessToken: token,
+    message: toStringValue(payload.message, fallbackMessage),
+  };
+};
+
+const normalizeRegisterResponse = (
+  value: unknown,
+  fallbackMessage: string
+): RegisterResponse => {
+  const payload = asRecord(value);
+  const nestedData = asRecord(payload.data);
+  const userSource = payload.user || nestedData.user || payload.newUser;
+  const token = resolveToken(payload) || resolveToken(nestedData);
+
+  return {
+    message: toStringValue(payload.message, fallbackMessage),
+    user: userSource ? normalizeUser(userSource) : undefined,
+    token: token || undefined,
+    accessToken: token || undefined,
+  };
+};
+
+const normalizeUsers = (value: unknown): User[] => {
+  if (Array.isArray(value)) {
+    return value.map(normalizeUser);
+  }
+
+  const payload = asRecord(value);
+
+  if (Array.isArray(payload.users)) {
+    return payload.users.map(normalizeUser);
+  }
+
+  if (Array.isArray(payload.data)) {
+    return payload.data.map(normalizeUser);
+  }
+
+  return [];
+};
+
+const normalizeSingleUser = (value: unknown): User => {
+  const payload = asRecord(value);
+
+  if (payload.user || payload.data) {
+    return normalizeUser(payload.user || payload.data);
+  }
+
+  return normalizeUser(value);
+};
+
+export const loginUser = async (
+  email: string,
+  password: string
+): Promise<AuthResponse> => {
   try {
     const response = await api.post("/users/login", { email, password });
-    return response.data; // Trả về token hoặc thông tin user
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || "Đăng nhập thất bại!");
+
+    return normalizeAuthResponse(
+      response.data,
+      "Đăng nhập thành công.",
+      true
+    );
+  } catch (error: unknown) {
+    throw new Error(getErrorMessage(error, "Đăng nhập thất bại!"));
   }
 };
 
-// Đăng ký
 export const registerUser = async (
   email: string,
   password: string,
   name: string,
   phone: string
-) => {
+): Promise<RegisterResponse> => {
   try {
     const response = await api.post("/users/register", {
       email,
@@ -24,44 +184,47 @@ export const registerUser = async (
       name,
       phone,
     });
-    return response.data; // Trả về thông tin user sau khi tạo tài khoản
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || "Tạo tài khoản thất bại!");
+
+    return normalizeRegisterResponse(response.data, "Tạo tài khoản thành công.");
+  } catch (error: unknown) {
+    throw new Error(getErrorMessage(error, "Tạo tài khoản thất bại!"));
   }
 };
 
-// Quên mật khẩu
-export const forgotPassword = async (email: string) => {
+export const forgotPassword = async (
+  email: string
+): Promise<BasicApiResponse> => {
   try {
     const response = await api.post("/users/forgot-password", { email });
-    return response.data;
-  } catch (error: any) {
+
+    return normalizeMessage(response.data, "Đã gửi email đặt lại mật khẩu.");
+  } catch (error: unknown) {
     throw new Error(
-      error.response?.data?.message || "Lỗi khi gửi yêu cầu quên mật khẩu!"
+      getErrorMessage(error, "Lỗi khi gửi yêu cầu quên mật khẩu!")
     );
   }
 };
 
-// Reset mật khẩu
-export const resetPassword = async (resetToken: string, newPassword: string) => {
+export const resetPassword = async (
+  resetToken: string,
+  newPassword: string
+): Promise<BasicApiResponse> => {
   try {
     const response = await api.post(`/users/reset-password/${resetToken}`, {
       password: newPassword,
     });
-    return response.data;
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Lỗi khi thay đổi mật khẩu!"
-    );
+
+    return normalizeMessage(response.data, "Đặt lại mật khẩu thành công.");
+  } catch (error: unknown) {
+    throw new Error(getErrorMessage(error, "Lỗi khi thay đổi mật khẩu!"));
   }
 };
 
-// Cập nhật mật khẩu
 export const updatePassword = async (
   oldPassword: string,
   newPassword: string,
   token: string
-) => {
+): Promise<BasicApiResponse> => {
   try {
     const response = await api.put(
       "/users/update-password",
@@ -72,138 +235,132 @@ export const updatePassword = async (
         },
       }
     );
-    return response.data;
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Cập nhật mật khẩu thất bại!"
-    );
+
+    return normalizeMessage(response.data, "Cập nhật mật khẩu thành công.");
+  } catch (error: unknown) {
+    throw new Error(getErrorMessage(error, "Cập nhật mật khẩu thất bại!"));
   }
 };
 
-// Cập nhật profile user
 export const updateUserProfile = async (
-  updatedData: {
-    name?: string;
-    email?: string;
-    phone?: string;
-  },
+  updatedData: UserUpdatePayload,
   token: string
-) => {
+): Promise<User> => {
   try {
     const response = await api.put("/users/profile", updatedData, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Cập nhật thông tin thất bại!"
-    );
+
+    return normalizeSingleUser(response.data);
+  } catch (error: unknown) {
+    throw new Error(getErrorMessage(error, "Cập nhật thông tin thất bại!"));
   }
 };
 
-// Lấy tất cả user (Admin)
-export const getAllUsers = async (token: string) => {
+export const getAllUsers = async (token: string): Promise<User[]> => {
   try {
     const response = await api.get("/users", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
-  } catch (error: any) {
+
+    return normalizeUsers(response.data);
+  } catch (error: unknown) {
     throw new Error(
-      error.response?.data?.message || "Lấy danh sách người dùng thất bại!"
+      getErrorMessage(error, "Lấy danh sách người dùng thất bại!")
     );
   }
 };
 
-// Cập nhật user (Admin)
 export const updateUserByAdmin = async (
   userId: string,
-  updatedData: {
-    name?: string;
-    email?: string;
-    phone?: string;
-    isAdmin?: boolean;
-  },
+  updatedData: UserUpdatePayload,
   token: string
-) => {
+): Promise<User> => {
   try {
     const response = await api.put(`/users/${userId}`, updatedData, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Cập nhật người dùng thất bại!"
-    );
+
+    return normalizeSingleUser(response.data);
+  } catch (error: unknown) {
+    throw new Error(getErrorMessage(error, "Cập nhật người dùng thất bại!"));
   }
 };
 
-// Xóa user (Admin)
-export const deleteUser = async (userId: string, token: string) => {
+export const deleteUser = async (
+  userId: string,
+  token: string
+): Promise<BasicApiResponse> => {
   try {
     const response = await api.delete(`/users/${userId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Xóa người dùng thất bại!"
-    );
+
+    return normalizeMessage(response.data, "Xóa người dùng thành công.");
+  } catch (error: unknown) {
+    throw new Error(getErrorMessage(error, "Xóa người dùng thất bại!"));
   }
 };
 
-// Lấy user theo ID (Admin)
-export const getUserById = async (userId: string, token: string) => {
+export const getUserById = async (
+  userId: string,
+  token: string
+): Promise<User> => {
   try {
     const response = await api.get(`/users/${userId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
-  } catch (error: any) {
+
+    return normalizeSingleUser(response.data);
+  } catch (error: unknown) {
     throw new Error(
-      error.response?.data?.message || "Lấy thông tin người dùng thất bại!"
+      getErrorMessage(error, "Lấy thông tin người dùng thất bại!")
     );
   }
 };
 
-// Tìm kiếm user
-export const searchUsers = async (query: string, token: string) => {
+export const searchUsers = async (
+  query: string,
+  token: string
+): Promise<User[]> => {
   try {
-    const response = await api.get(`/users/search?query=${query}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Lỗi khi tìm kiếm người dùng!"
+    const response = await api.get(
+      `/users/search?query=${encodeURIComponent(query)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
+
+    return normalizeUsers(response.data);
+  } catch (error: unknown) {
+    throw new Error(getErrorMessage(error, "Lỗi khi tìm kiếm người dùng!"));
   }
 };
 
-// Lấy profile user hiện tại
-export const getUserProfile = async (token: string) => {
+export const getUserProfile = async (token: string): Promise<User> => {
   try {
     const response = await api.get("/users/profile", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
-  } catch (error: any) {
+
+    return normalizeSingleUser(response.data);
+  } catch (error: unknown) {
     throw new Error(
-      error.response?.data?.message || "Không thể lấy thông tin người dùng!"
+      getErrorMessage(error, "Không thể lấy thông tin người dùng!")
     );
   }
 };
