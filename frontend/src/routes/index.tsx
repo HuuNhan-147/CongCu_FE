@@ -8,7 +8,7 @@ import { AuthProvider } from "../context/AuthContext";
 import Layout from "../components/Layout";
 import CartPage from "../pages/CartPage";
 import ListOrderPage from "../pages/ListOrderPage";
-import PaymentResult from "../pages/PaymentPage";
+import PaymentPage from "../pages/PaymentPage";
 import OrderPage from "../pages/OrderPage";
 import ProductDetail from "../components/ProductDetail";
 import Register from "../pages/RegisterPage";
@@ -27,6 +27,7 @@ import AdminOrderManager from "../admincomponents/AdminOrderManager";
 import OrderDetails from "../admincomponents/OrderDetails";
 import SearchProduct from "../admincomponents/SearchProduct";
 import AIAgentChat from "../components/AIAgentChat";
+import OrderDetailPage from "../pages/OrderDetailPage";
 
 const AppRoutes = () => {
   return (
@@ -46,7 +47,7 @@ const AppRoutes = () => {
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/cart" element={<CartPage />} />
                     <Route path="/orders" element={<ListOrderPage />} />
-                    <Route path="/payment-result" element={<PaymentResult />} />
+                    <Route path="/payment-result" element={<PaymentPage />} />
                     <Route path="/create" element={<OrderPage />} />
                     <Route path="/products/:id" element={<ProductDetail />} />
                     <Route path="/register" element={<Register />} />
@@ -62,6 +63,7 @@ const AppRoutes = () => {
                       path="/change-password"
                       element={<ChangePassword />}
                     />
+                    <Route path="/orders/:id" element={<OrderDetailPage />} />
                   </Routes>
                   <AIAgentChat />
                 </Layout>
