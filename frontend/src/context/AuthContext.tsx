@@ -1,24 +1,18 @@
 import React, {
   createContext,
-  ReactNode,
   useContext,
-  useEffect,
   useState,
+  useEffect,
+  ReactNode,
 } from "react";
-import { User } from "../types/User";
-
-const USER_STORAGE_KEY = "user";
-const TOKEN_STORAGE_KEY = "token";
+import { User } from "../types/User"; // Import interface User
 
 export interface AuthContextType {
   user: User | null;
   token: string | null;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
-  isReady: boolean;
-  login: (userData: User, authToken: string) => void;
+  login: (userData: User, token: string) => void;
   logout: () => void;
-  getToken: () => string | null;
+  getToken: () => string | null; // Thêm hàm getToken
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -28,65 +22,47 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-    const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const storedUser = localStorage.getItem("user");
+    const storedToken = localStorage.getItem("token");
 
     if (storedUser && storedToken) {
-      try {
-        setUser(JSON.parse(storedUser));
-        setToken(storedToken);
-      } catch {
-        localStorage.removeItem(USER_STORAGE_KEY);
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
-      }
+      setUser(JSON.parse(storedUser));
+      setToken(storedToken);
     }
-
-    setIsReady(true);
   }, []);
 
-  const login = (userData: User, authToken: string) => {
+  const login = (userData: User, token: string) => {
     setUser(userData);
-    setToken(authToken);
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
-    localStorage.setItem(TOKEN_STORAGE_KEY, authToken);
+    setToken(token);
+    localStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem("token", token);
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem(USER_STORAGE_KEY);
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
   };
 
-  const getToken = () => token || localStorage.getItem(TOKEN_STORAGE_KEY);
+  // Hàm getToken để lấy token
+  const getToken = () => {
+    return token || localStorage.getItem("token");
+  };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: Boolean(user && getToken()),
-        isAdmin: Boolean(user?.isAdmin),
-        isReady,
-        login,
-        logout,
-        getToken,
-      }}
-    >
+    <AuthContext.Provider value={{ user, token, login, logout, getToken }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
-
   return context;
 };

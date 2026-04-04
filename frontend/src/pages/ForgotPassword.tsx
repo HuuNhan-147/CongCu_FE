@@ -1,129 +1,129 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { Mail, SendHorizontal } from "lucide-react";
 import { forgotPassword } from "../api/UserApi";
+import { useNavigate } from "react-router-dom";
+import bgImage from "../assets/backgroundLogin.jpg";
 
-const ForgotPassword: React.FC = () => {
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
+const ForgotPassword = () => {
+  const [email, setEmail] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!email.trim()) {
-      setError("Vui lòng nhập email.");
-      setSuccess("");
-      return;
-    }
-
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      setError("Email không đúng định dạng.");
-      setSuccess("");
-      return;
-    }
-
-    setError("");
-    setSuccess("");
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
+    setError(null);
+    setMessage(null);
 
     try {
-      const response = await forgotPassword(email.trim());
-      setSuccess(
-        response.message ||
-          "Yêu cầu đã được gửi. Vui lòng kiểm tra email để tiếp tục."
-      );
-      setEmail("");
-    } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Không thể gửi yêu cầu quên mật khẩu."
-      );
+      await forgotPassword(email);
+      setMessage("Đã gửi email khôi phục mật khẩu. Vui lòng kiểm tra hộp thư.");
+      setTimeout(() => navigate("/login"), 5000);
+    } catch (error: any) {
+      setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(160deg,#0f172a_0%,#1e293b_45%,#dbeafe_100%)] px-4 py-10">
-      <div className="mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-2xl md:grid md:grid-cols-[0.95fr_1.05fr]">
-        <div className="bg-slate-950 p-8 text-white">
-          <span className="inline-flex rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-1 text-sm text-cyan-200">
-            Khôi phục mật khẩu
-          </span>
-          <h1 className="mt-6 text-4xl font-black leading-tight">
-            Nhập email để nhận liên kết đặt lại mật khẩu.
-          </h1>
-          <p className="mt-4 text-sm leading-7 text-slate-300">
-            Trang này chỉ gửi yêu cầu reset password. Link đặt lại mật khẩu sẽ
-            phụ thuộc vào cấu hình backend và email service hiện tại.
+    <div
+      className="flex items-center justify-center min-h-screen bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${bgImage})` }}
+    >
+      <div className="bg-white bg-opacity-95 p-12 rounded-2xl shadow-xl w-full max-w-md">
+        <div className="text-center mb-8">
+          <h2 className="text-4xl font-extrabold text-gray-800 mb-2">
+            Quên mật khẩu
+          </h2>
+          <p className="text-xl text-gray-600">
+            Nhập email để nhận liên kết đặt lại
           </p>
         </div>
 
-        <div className="p-6 sm:p-10">
-          <div className="mb-8">
-            <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700">
-              <SendHorizontal size={16} />
-              Forgot Password
-            </span>
-            <h2 className="mt-4 text-3xl font-black text-slate-900">
-              Gửi yêu cầu khôi phục
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Chúng tôi sẽ gửi liên kết đặt lại mật khẩu qua email của bạn.
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
+            <p className="text-red-600 text-xl text-center font-medium">
+              {error}
             </p>
           </div>
+        )}
 
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-slate-700">
-                Email
-              </span>
-              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <Mail size={18} className="text-slate-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full bg-transparent text-sm outline-none"
-                />
-              </div>
-            </label>
+        {message && (
+          <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
+            <p className="text-green-600 text-xl text-center font-medium">
+              {message}
+            </p>
+          </div>
+        )}
 
-            {error ? (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                {error}
-              </div>
-            ) : null}
-
-            {success ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                {success}
-              </div>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+        <form onSubmit={handleForgotPassword} className="space-y-6">
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-xl font-medium text-gray-700 mb-2"
             >
-              <SendHorizontal size={18} />
-              {loading ? "Đang gửi yêu cầu..." : "Gửi liên kết"}
-            </button>
-          </form>
+              Email đăng nhập
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full p-4 border-2 border-gray-200 rounded-xl text-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              placeholder="Nhập email của bạn"
+            />
+          </div>
 
-          <div className="mt-6 text-sm text-slate-500">
-            <Link
-              to="/login"
-              className="font-semibold text-blue-600 transition hover:text-blue-700"
+          <button
+            type="submit"
+            className={`w-full py-4 px-6 rounded-xl text-2xl font-semibold text-white ${
+              loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+            } transition-colors duration-300 shadow-md`}
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-6 w-6 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Đang xử lý...
+              </span>
+            ) : (
+              "Gửi yêu cầu"
+            )}
+          </button>
+
+          <div className="text-center pt-6 border-t border-gray-200">
+            <button
+              onClick={() => navigate("/login")}
+              className="text-xl font-semibold text-blue-600 hover:text-blue-500"
             >
               Quay lại trang đăng nhập
-            </Link>
+            </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
