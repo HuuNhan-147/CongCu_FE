@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getOrderById } from "../api/OrderApi";
+import { getOrderDetails } from "../api/OrderApi";
 import { Order } from "../types/order";
 import { FaArrowLeft, FaBox, FaMapMarkerAlt, FaClock } from "react-icons/fa";
 import { format } from "date-fns";
@@ -31,7 +31,7 @@ const OrderDetailPage: React.FC = () => {
       const token = getToken();
       if (!token) return;
 
-      const data = await getOrderById(orderId, token);
+      const data = await getOrderDetails(token, orderId);
       setOrder(data);
     } catch (error) {
       console.error("Lỗi khi lấy chi tiết đơn hàng:", error);
