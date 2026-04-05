@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { ShoppingCart, Check } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import LoginPrompt from "./Header/LoginPrompt";
 
 interface AddToCartButtonProps {
   product: IProduct;
@@ -19,18 +19,15 @@ export const AddToCartButton: React.FC<AddToCartButtonProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const { getToken } = useAuth();
   const { addToCart } = useCart();
-  const navigate = useNavigate();
 
   const handleAddToCart = async () => {
     const token = getToken();
     if (!token) {
-      toast.warning("Vui lòng đăng nhập để thêm vào giỏ hàng!", {
-        position: "top-right",
-        autoClose: 2000,
-      });
-      navigate("/login");
+      // Hiển thị LoginPrompt thay vì chuyển trang
+      setShowLoginPrompt(true);
       return;
     }
 
@@ -63,6 +60,11 @@ export const AddToCartButton: React.FC<AddToCartButtonProps> = ({
   };
 
   return (
+    <>
+      {/* LoginPrompt hiển thị khi chưa đăng nhập */}
+      {showLoginPrompt && (
+        <LoginPrompt onClose={() => setShowLoginPrompt(false)} />
+      )}
     <button
       onClick={handleAddToCart}
       disabled={product.countInStock <= 0 || isLoading || isSuccess}
@@ -116,5 +118,6 @@ export const AddToCartButton: React.FC<AddToCartButtonProps> = ({
         "Hết hàng"
       )}
     </button>
+    </>
   );
 };
