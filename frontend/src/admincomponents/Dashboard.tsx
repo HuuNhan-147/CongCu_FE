@@ -179,14 +179,10 @@ const Dashboard: React.FC = () => {
                 className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 <img
-  src={product.image || "/images/no-image.png"}
-  alt={product.name}
-  className="w-16 h-16 object-cover rounded-lg"
-  onError={(e) => {
-    (e.currentTarget as HTMLImageElement).src = "/images/no-image.png";
-  }}
-/>
-
+                  src={`http://localhost:5000${product.image}`}
+                  alt={product.name}
+                  className="w-16 h-16 object-cover rounded-lg"
+                />
                 <div>
                   <p className="font-semibold text-gray-800">{product.name}</p>
                   <p className="text-sm text-gray-500">
@@ -243,7 +239,7 @@ const Dashboard: React.FC = () => {
                 <div key={user._id} className="flex items-center space-x-4">
                   <div className="flex-shrink-0">
                     <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                      {user.name?.[0]?.toUpperCase() || "U"}
+                      {user.name.charAt(0)}
                     </div>
                   </div>
                   <div>
