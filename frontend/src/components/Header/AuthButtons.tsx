@@ -1,107 +1,104 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { User as UserIcon, LogOut, Settings } from 'lucide-react';
-import { User } from '../../types/User';
-import UserProfile from './UserProfile';
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { User, LogOut, ShieldCheck } from "lucide-react";
+import UserProfile from "./UserProfile";
+import LoginPrompt from "./LoginPrompt";
+import { User as UserType } from "../../types/User";
 
 interface AuthButtonsProps {
-  user: User | null;
+  user: UserType | null;
   token: string | null;
   onAutoLogout: (message: string) => void;
 }
 
-const AuthButtons: React.FC<AuthButtonsProps> = ({ user, token, onAutoLogout }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const AuthButtons: React.FC<AuthButtonsProps> = ({
+  user,
+  token,
+  onAutoLogout,
+}) => {
   const [showProfile, setShowProfile] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const navigate = useNavigate();
+  const [updatedUser, setUpdatedUser] = useState<UserType | null>(user);
+  const handleLogout = () => {
+    if (window.confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
+      onAutoLogout("Bạn đã đăng xuất thành công!");
+    }
+  };
 
-  // Xử lý click ra ngoài để đóng dropdown
+  const handleToggleProfile = () => {
+    setShowProfile(!showProfile);
+  };
+useEffect(() => {
+  setUpdatedUser(user);
+}, [user]);
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    if (user) return;
 
-  if (!user || !token) {
+    const interval = setInterval(() => {
+      setShowLoginPrompt(true);
+      setTimeout(() => setShowLoginPrompt(false), 3000);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+  if (user) {
     return (
-      <div className="flex items-center space-x-2 md:space-x-3">
-        <Link
-          to="/login"
-          className="text-sm font-medium text-gray-300 hover:text-white transition-colors"
+      <div className="flex items-center space-x-4 relative">
+        <button
+          onClick={handleToggleProfile}
+          className="text-lg text-white hover:text-gray-200 font-medium transition flex items-center"
         >
-          Đăng nhập
-        </Link>
-        <Link
-          to="/register"
-          className="text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-md transition-colors"
+          <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white mr-2">
+            {updatedUser?.name?.charAt(0).toUpperCase()}
+          </div>
+          {updatedUser?.name}
+        </button>
+
+        {user.isAdmin && (
+          <Link
+            to="/admin"
+            className="flex items-center text-lg text-yellow-400 hover:text-yellow-600 font-medium transition"
+          >
+            <ShieldCheck className="h-5 w-5 mr-2" />
+            Admin
+          </Link>
+        )}
+
+        <button
+          onClick={handleLogout}
+          className="flex items-center text-lg text-red-400 hover:text-red-600 transition"
+          title="Đăng xuất"
         >
-          Đăng ký
-        </Link>
+          <LogOut className="h-5 w-5" />
+        </button>
+
+        <UserProfile
+          token={token}
+          showProfile={showProfile}
+          onToggleProfile={handleToggleProfile}
+          onAutoLogout={onAutoLogout}
+          onUpdateUser={(newUser) => setUpdatedUser(newUser)} // ← truyền hàm cập nhật
+        />
       </div>
     );
   }
 
   return (
-    <>
-      <div className="relative" ref={dropdownRef}>
-        {/* ── Avatar Button ── */}
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center space-x-2 focus:outline-none"
-        >
-          <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-300 hover:bg-gray-600 transition-colors">
-            <UserIcon size={18} />
-          </div>
-          <span className="hidden md:block text-sm font-medium text-gray-300 truncate max-w-[100px]">
-            {user.name}
-          </span>
-        </button>
-
-        {/* ── Dropdown Menu ── */}
-        {isOpen && (
-          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-            {/* User info */}
-            <div className="px-4 py-2 border-b border-gray-100">
-              <p className="text-sm font-semibold text-gray-800 truncate">{user.name}</p>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
-            </div>
-
-            {/* Tài khoản → mở UserProfile modal */}
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                setShowProfile(true); // ← Bước 1: showProfile = true
-              }}
-              className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-            >
-              <Settings size={16} className="mr-2 text-gray-500" />
-              Tài khoản
-            </button>
-
-            {/* Đăng xuất */}
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                onAutoLogout("Bạn đã đăng xuất thành công!");
-              }}
-              className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <LogOut size={16} className="mr-2" />
-              Đăng xuất
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* ── UserProfile Modal (render ngoài relative container) ── */}
-      {showProfile && (
-        <UserProfile onClose={() => setShowProfile(false)} />
-      )}
-    </>
+    <div className="relative">
+      <Link
+        to="/login"
+        className="flex items-center text-lg text-white hover:text-gray-200 font-medium transition"
+      >
+        <User className="h-7 w-7 mr-2" />
+        Đăng nhập
+      </Link>
+      <LoginPrompt
+        show={showLoginPrompt}
+        onClose={() => setShowLoginPrompt(false)}
+      />
+    </div>
   );
 };
 

@@ -1,17 +1,11 @@
-import React from 'react';
-import { Phone, Mail } from 'lucide-react';
+import React from "react";
+import { Phone } from "lucide-react";
 
 const ContactInfo: React.FC = () => {
   return (
-    <div className="hidden lg:flex items-center space-x-4 text-sm text-gray-400">
-      <div className="flex items-center">
-        <Phone size={16} className="mr-1" />
-        <span>1900 1234</span>
-      </div>
-      <div className="flex items-center">
-        <Mail size={16} className="mr-1" />
-        <span>support@nodexstore.com</span>
-      </div>
+    <div className="hidden md:flex items-center space-x-4 text-white text-lg">
+      <Phone className="h-6 w-6 mr-2" />
+      <span>Liên hệ hỗ trợ 1900 2154</span>
     </div>
   );
 };
